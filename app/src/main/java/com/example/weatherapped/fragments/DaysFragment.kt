@@ -42,7 +42,6 @@ class DaysFragment : Fragment(), WeatherAdapter.Listener{
         rcView.adapter = adapter
     }
     companion object {
-
         @JvmStatic
         fun newInstance() =
             DaysFragment()

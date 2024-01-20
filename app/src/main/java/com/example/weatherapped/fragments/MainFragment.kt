@@ -96,6 +96,7 @@ class MainFragment : Fragment() {
         }.attach()
         ibSync.setOnClickListener{
             tabLayout.selectTab(tabLayout.getTabAt(0))
+            checkLocation()
         }
         ibSearch.setOnClickListener{
             DialogManager.searchByNameDialog(requireContext(), object : DialogManager.Listener{
