@@ -12,11 +12,11 @@
         android:layout_height="wrap_content"
         android:alpha="0.5"
         android:scaleType="fitXY"
+        android:src="@drawable/back_ver3"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        android:src="@drawable/back_sky" />
+        app:layout_constraintTop_toTopOf="parent" />
 
     <androidx.cardview.widget.CardView
         android:id="@+id/cardView"
