@@ -52,15 +52,13 @@ class HoursFragment : Fragment() {
         {
             val item = WeatherModel(
                 wItem.city,
-                (hoursArray[i] as JSONObject).getString("time").split(" ")[1],
-                (hoursArray[i] as JSONObject).getJSONObject("condition")
-                    .getString("text"),
-                (hoursArray[i] as JSONObject).getString("temp_c") +"°C",
+                wItem.hours!![i].time.split(" ")[1],
+                wItem.hours!![i].condition.text,
+                wItem.hours!![i].temp_c.toString() +"°C",
                 "",
                 "",
-                (hoursArray[i] as JSONObject).getJSONObject("condition")
-                    .getString("icon"),
-                ""
+                wItem.hours!![i].condition.icon,
+                null,
             )
             list.add(item)
         }
