@@ -20,6 +20,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.lifecycleScope
 import com.android.volley.Request
 import com.android.volley.toolbox.StringRequest
 import com.android.volley.toolbox.Volley
@@ -29,6 +30,8 @@ import com.example.weatherapped.R
 import com.example.weatherapped.adapters.VpAdapter
 import com.example.weatherapped.adapters.WeatherModel
 import com.example.weatherapped.databinding.FragmentMainBinding
+import com.example.weatherapped.retrofit.WeatherApi
+import com.example.weatherapped.retrofit.WeatherDataModel
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationServices
@@ -37,6 +40,19 @@ import com.google.android.gms.tasks.CancellationTokenSource
 import com.google.android.material.tabs.TabLayoutMediator
 import com.squareup.picasso.Picasso
 import org.json.JSONObject
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
+import retrofit2.Retrofit
+import com.google.gson.Gson
+import com.google.gson.GsonBuilder
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import retrofit2.converter.gson.GsonConverterFactory
+import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
+import retrofit2.create
 
 const val API_KEY = "5bcb8f0ada1b48b5b76132313241301"
 class MainFragment : Fragment() {
@@ -140,10 +156,10 @@ class MainFragment : Fragment() {
         ) {
             return
         }
-        fLocationClient
-            .getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, ct.token).addOnCompleteListener{
-                requestWeatherData("${it.result.latitude},${it.result.longitude},")
-            }
+            fLocationClient
+                .getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, ct.token).addOnCompleteListener{
+                    requestWeatherData("${it.result.latitude},${it.result.longitude},")
+                }
     }
 
     private fun permissionListener(){
@@ -160,72 +176,75 @@ class MainFragment : Fragment() {
             pLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
         }
     }
-    private fun requestWeatherData(city: String){
-        val url = "https://api.weatherapi.com/v1/forecast.json?key=" +
-                API_KEY +
-                "&q=" +
-                city +
-                "&days=" +
-                "3" +
-                "&aqi=no&alerts=no"
-        val queue = Volley.newRequestQueue(context)
-        val request = StringRequest(
-            Request.Method.GET,
-            url,
-            {
-                result-> parseWeatherData(result)
+    private fun requestWeatherData(city: String) {
+        val interceptor = HttpLoggingInterceptor().apply {
+            level = HttpLoggingInterceptor.Level.BODY
+        }
 
-            },
-            {
-                error-> Log.d("MyLog", "Error: $error")
-            }
-        )
-        queue.add(request)
-    }
+        val client = OkHttpClient.Builder()
+            .addInterceptor(interceptor)
+            .build()
 
-    private  fun parseWeatherData(result: String){
-        val mainObject = JSONObject(result)
-        val list = parseDays(mainObject)
-        parseCurrentData(mainObject, list[0])
-    }
+        val gson: Gson = GsonBuilder().create()
 
-    private fun parseDays(mainObject: JSONObject) : List<WeatherModel>{
-        val list = ArrayList<WeatherModel>()
-        val daysArray = mainObject.getJSONObject("forecast")
-            .getJSONArray("forecastday")
-        val name = mainObject.getJSONObject("location").getString("name")
+        val retrofit = Retrofit.Builder()
+            .baseUrl("https://api.weatherapi.com/v1/")
+            .addConverterFactory(GsonConverterFactory.create(gson))
+            .client(client)
+            .build()
 
-        for(i in 0 until  daysArray.length()){
-            val day = daysArray[i] as JSONObject
-            val item = WeatherModel(
-                name,
-                day.getString("date"),
-                day.getJSONObject("day").getJSONObject("condition").getString("text"),
-                "",
-                day.getJSONObject("day").getString("maxtemp_c").toFloat().toInt().toString(),
-                day.getJSONObject("day").getString("mintemp_c").toFloat().toInt().toString(),
-                day.getJSONObject("day").getJSONObject("condition").getString("icon"),
-                day.getJSONArray("hour").toString()
+        val weatherApi = retrofit.create<WeatherApi.WeatherApi>()
+
+        CoroutineScope(Dispatchers.IO).launch {
+            val call = weatherApi.getWeatherData(
+                apiKey = API_KEY,
+                city = city,
+                days = "3",
+                aqi = "no",
+                alerts = "no"
             )
+            convertedCall(call)
+        }
+    }
+
+    private  fun convertedCall(call: WeatherDataModel){
+        val list = convertedCallDay(call)
+        parseCurrentData(call, list[0])
+    }
+
+    private fun convertedCallDay(call: WeatherDataModel) : List<WeatherModel>{
+        val list = ArrayList<WeatherModel>()
+
+        for(i in 0 until call.forecast.forecastday.size){
+            val logged = call.forecast.forecastday[i].hour
+            val item = WeatherModel(
+                call.location.name,
+                call.forecast.forecastday[i].date,
+                call.forecast.forecastday[i].day.condition.text,
+                "",
+                call.forecast.forecastday[i].day.maxtemp_c,
+                call.forecast.forecastday[i].day.mintemp_c,
+                call.forecast.forecastday[i].day.condition.icon,
+                logged
+            )
+            Log.d("MyLog", "Error: $logged")
             list.add(item)
         }
-        model.liveDataList.value = list
+        model.liveDataList.postValue(list)
         return list
     }
-    private  fun parseCurrentData(mainObject: JSONObject, weatherItem: WeatherModel){
+    private  fun parseCurrentData(call: WeatherDataModel, weatherItem: WeatherModel){
         val item = WeatherModel(
-            mainObject.getJSONObject("location").getString("name"),
-            mainObject.getJSONObject("current").getString("last_updated"),
-            mainObject.getJSONObject("current")
-                .getJSONObject("condition").getString("text"),
-            mainObject.getJSONObject("current").getString("temp_c"),
+            call.location.name,
+            call.current.last_updated,
+            call.current.condition.text,
+            call.current.temp_c.toString(),
             weatherItem.maxTemp,
             weatherItem.minTemp,
-            mainObject.getJSONObject("current")
-                .getJSONObject("condition").getString("icon"),
+            call.current.condition.icon,
             weatherItem.hours
         )
-        model.liveDataCurrent.value = item
+        model.liveDataCurrent.postValue(item)
     }
     companion object {
         @JvmStatic
