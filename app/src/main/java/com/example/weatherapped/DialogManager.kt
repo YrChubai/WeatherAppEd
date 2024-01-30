@@ -8,8 +8,8 @@ object DialogManager {
     fun locationSettingsDialog(context: Context, listener:Listener){
         val builder = AlertDialog.Builder(context)
         val dialog = builder.create()
-        dialog.setTitle("Местоположение?")
-        dialog.setMessage("Местоположение отключено, хотите включить")
+        dialog.setTitle("Местоположение отключено")
+        dialog.setMessage("Это мешает работе приложения, хотите включить?")
         dialog.setButton(AlertDialog.BUTTON_POSITIVE, "Ок"){ _,_ ->
             listener.onClick(null)
             dialog.dismiss()

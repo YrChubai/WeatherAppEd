@@ -42,7 +42,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.create
 
-const val API_KEY = "5bcb8f0ada1b48b5b76132313241301"
+const val API_KEY = "YOUR API KEY"
 class MainFragment : Fragment() {
     private  lateinit var fLocationClient : FusedLocationProviderClient
     private val fList = listOf(
@@ -180,7 +180,6 @@ class MainFragment : Fragment() {
             .addConverterFactory(GsonConverterFactory.create(gson))
             .client(client)
             .build()
-
         val weatherApi = retrofit.create<WeatherApi.WeatherApi>()
 
         CoroutineScope(Dispatchers.IO).launch {
@@ -193,6 +192,7 @@ class MainFragment : Fragment() {
             )
             convertedCall(call)
         }
+
     }
 
     private  fun convertedCall(call: WeatherDataModel){
@@ -215,7 +215,6 @@ class MainFragment : Fragment() {
                 call.forecast.forecastday[i].day.condition.icon,
                 logged
             )
-            Log.d("MyLog", "Error: $logged")
             list.add(item)
         }
         model.liveDataList.postValue(list)
